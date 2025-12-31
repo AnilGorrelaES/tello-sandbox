@@ -1,4 +1,6 @@
-djitellopy==1.5
-imutils==0.5.3
-numpy==1.18.5
-opencv-python==4.2.0.34
+djitellopy==2.5.0
+av>=16,<17
+opencv-python==4.12.0.88
+numpy>=2,<2.3
+imutils>=0.5.4,<0.6
+pillow>=12,<13
