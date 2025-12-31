@@ -12,6 +12,14 @@ from multiprocessing import Manager, Process, Pipe, Event
 tello = None
 video_writer = None
 
+TARGET_FACE_AREA = 6000
+FACE_AREA_TOLERANCE = 1500
+FACE_AREA_KP = 0.006
+
+
+def clamp_rc(value):
+    return int(max(-100, min(100, round(value))))
+
 
 # function to handle keyboard interrupt
 def signal_handler(sig, frame):
@@ -109,6 +117,7 @@ def track_face_in_video_feed(exit_event, show_video_conn, video_writer_conn, run
 
             if rect is not None:
                 (x, y, w, h) = rect
+                face_area = w * h
                 cv2.rectangle(frame, (x, y), (x + w, y + h),
                               (0, 255, 0), 2)
 
@@ -150,10 +159,16 @@ def track_face_in_video_feed(exit_event, show_video_conn, video_writer_conn, run
 
                     if track_face and fly:
                         # left/right: -100/100
-                        lr = int(max(-100, min(100, round(pan_update / 3))))
-                        ud = int(max(-100, min(100, round(tilt_update / 2))))
-                        print(lr, ud)
-                        tello.send_rc_control(lr, 0, ud, 0)
+                        lr = 0
+                        yaw = clamp_rc(pan_update / 3)
+                        ud = clamp_rc(tilt_update / 2)
+                        if abs(TARGET_FACE_AREA - face_area) <= FACE_AREA_TOLERANCE:
+                            fb = 0
+                        else:
+                            fb_update = (TARGET_FACE_AREA - face_area) * FACE_AREA_KP
+                            fb = clamp_rc(fb_update)
+                        print(f"lr={lr} fb={fb} ud={ud} yaw={yaw} face_area={face_area}")
+                        tello.send_rc_control(lr, fb, ud, yaw)
 
             # send frame to other processes
             show_video_conn.send(frame)
